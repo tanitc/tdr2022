@@ -1,0 +1,80 @@
+---
+title: "Document"
+output: html_document
+date: "2022-10-02"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(tidyverse)) 
+```
+
+# Introducció
+
+# Processament de dades
+
+## Lectura de les dades
+
+```{r}
+#setwd("G:/.shortcut-targets-by-id/1yeMcVH8Rqm8HRPyZKuaizcYlkg8szXA1/TdR Tanit/data")
+td <- read.table("../data/dades.txt", header=TRUE, dec=",", sep="\t")
+```
+
+### Validació de la carrega
+
+Es presenta la estructura de les dades.
+
+```{r}
+resum <- glimpse(td)
+
+print(resum)
+```
+
+Com es pot veure les columnes contenen les diferents observacions d'una mateixa canya dins de una experiment.
+
+Es mostren les primeres files.
+
+```{r}
+resum <- head(td)
+
+print(resum)
+```
+
+A continuació s'observa quants tipus de canyes i cuantes files té cada tipus.
+
+```{r}
+resum <- aggregate(data.frame(N_FILES=rep(1:nrow(td)))
+                   ,list(NOM1=td$NOM1,NOM2=td$NOM2, CANYA=td$CANYA, M=td$M, B=td$B)
+                   ,sum)
+resum <- aggregate(data.frame(N_FILES=rep(1, nrow(td)))
+                   ,list(B=td$B, CANYA=td$CANYA)
+                   ,sum)
+
+print(resum)
+
+```
+Com es pot veure, hi ha 7 bosses (B) numerades del 1 a 7 on, en cada bossa tenim una canya diferent (6 en total) i a la setena bossa (anomenada canya de control), de fet, no conté cap canyai ha una bossa de control sense cap canya que serveix per mesurar les posibles variacions de pes de la bossa en el temps.
+
+summary(td)
+
+## Reestructuració de les dades
+
+Es reestructura el format de dades transversals on les variables de temps estàn en diferents columnes, a un format de dades longitudinals on cada canya y medi tenen difernets files per cada setmana.
+
+```{r}
+p_td <- reshape(td, direction = "long"
+                , idvar = "NOM1", v.names = "PES"
+                , varying = c("TI","T0","T1","T2","T3","T4")
+                , timevar = "SETMANA")
+```
+
+# Transformació
+
+# passem de c
+
+```{r}
+p_td$SETMANA <- p_td$SETMANA - 1
+head(p_td,2)
+
+```
+
