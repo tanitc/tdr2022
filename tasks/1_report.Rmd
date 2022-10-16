@@ -7,6 +7,7 @@ date: "2022-10-02"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 suppressPackageStartupMessages(library(tidyverse)) 
+library(readxl) 
 ```
 
 # Introducció
@@ -16,7 +17,12 @@ suppressPackageStartupMessages(library(tidyverse))
 ## Lectura de les dades
 
 ```{r}
-#setwd("G:/.shortcut-targets-by-id/1yeMcVH8Rqm8HRPyZKuaizcYlkg8szXA1/TdR Tanit/data")
+
+if (1=2){
+  dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = 2, range = "C4:P32", col_names = TRUE)
+  write.table(dat, file="../data/dades.txt", row.names=FALSE, dec=",", sep="\t")
+}
+
 td <- read.table("../data/dades.txt", header=TRUE, dec=",", sep="\t")
 ```
 

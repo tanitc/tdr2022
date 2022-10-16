@@ -1,0 +1,31 @@
+LANGUAGE PLASTIC_SOURCES ORIGEN_PLASTIC
+CAT  TOTAL_MICROPLASTIC Microplàstic total
+CAT  PRIMARY_PELLETS Pellets primaris
+CAT  MICROBEADS Microperles
+CAT  TEXTILE_WASH Rentat tèxtil
+CAT  TYRE_ABRASION Abrasió dels pneumàtics
+CAT  BRAKE_DUST Pols dels frens
+CAT  ROAD_MARKINGS Marques vials
+CAT  MARINE_COATINGS Recobriments marins
+CAT  ARTIFICIAL_TURF Gespa artificial
+CAT  MICROPLASTICS_DUST Pols de microplàstics
+CAT  WW_SLUDGE Llots WW
+CAT  TOTAL_MACROPLASTIC Total de macroplàstics
+CAT  MARINE_ACTIVITIES Activitats marines
+CAT  LITTERING Escombraries
+CAT  MISMANAGED Mal gestionat
+ENG TOTAL_MACROPLASTIC	Total Macroplastic
+ENG MARINE_ACTIVITIES	Marine activities
+ENG LITTERING	Littering
+ENG MISMANAGED	Mismanaged
+ENG TOTAL_MICROPLASTIC	Total Microplastic
+ENG PRIMARY_PELLETS	Primary pellets
+ENG MICROBEADS	Microbeads
+ENG TEXTILE_WASH	Textile wash
+ENG TYRE_ABRASION	Tyre abrasion
+ENG BRAKE_DUST	Brake dust
+ENG ROAD_MARKINGS	Road markings
+ENG MARINE_COATINGS	Marine coatings
+ENG ARTIFICIAL_TURF	Artificial turf
+ENG MICROPLASTICS_DUST	Microplastics dust
+ENG WW_SLUDGE	WW sludge
