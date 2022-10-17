@@ -19,6 +19,7 @@ library(readxl)
 ```{r}
 
 if (1=2){
+  
   dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = 2, range = "C4:P32", col_names = TRUE)
   write.table(dat, file="../data/dades.txt", row.names=FALSE, dec=",", sep="\t")
 }
@@ -50,16 +51,16 @@ A continuació s'observa quants tipus de canyes i cuantes files té cada tipus.
 
 ```{r}
 resum <- aggregate(data.frame(N_FILES=rep(1:nrow(td)))
-                   ,list(NOM1=td$NOM1,NOM2=td$NOM2, CANYA=td$CANYA, M=td$M, B=td$B)
+                   ,list(NOM=td$NOM, MEDI=td$MEDI, BOSSA=td$BOSSA, M=td$M, B=td$B)
                    ,sum)
 resum <- aggregate(data.frame(N_FILES=rep(1, nrow(td)))
-                   ,list(B=td$B, CANYA=td$CANYA)
+                   ,list(B=td$B, BOSSA=td$BOSSA)
                    ,sum)
 
 print(resum)
 
 ```
-Com es pot veure, hi ha 7 bosses (B) numerades del 1 a 7 on, en cada bossa tenim una canya diferent (6 en total) i a la setena bossa (anomenada canya de control), de fet, no conté cap canyai ha una bossa de control sense cap canya que serveix per mesurar les posibles variacions de pes de la bossa en el temps.
+Com es pot veure, hi ha 7 bosses (B) numerades del 1 a 7 on, en cada bossa tenim una canya diferent (6 en total) i a la setena bossa (anomenada canya de control) que és una bossa de control sense cap canya i serveix per mesurar les posibles variacions de pes de la bossa en el temps.
 
 summary(td)
 
@@ -69,7 +70,7 @@ Es reestructura el format de dades transversals on les variables de temps estàn
 
 ```{r}
 p_td <- reshape(td, direction = "long"
-                , idvar = "NOM1", v.names = "PES"
+                , idvar = "NOM", v.names = "PES"
                 , varying = c("TI","T0","T1","T2","T3","T4")
                 , timevar = "SETMANA")
 ```
