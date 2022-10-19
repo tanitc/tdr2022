@@ -20,7 +20,8 @@ library(readxl)
 
 if (1=2){
   
-  dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = 2, range = "C4:P32", col_names = TRUE)
+  dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = "Experiment1", range = "C5:P33", col_names = TRUE)
+  dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = "Experiment_COPIA", range = "C5:P33", col_names = TRUE)
   write.table(dat, file="../data/dades.txt", row.names=FALSE, dec=",", sep="\t")
 }
 
