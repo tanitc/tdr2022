@@ -18,7 +18,7 @@ library(readxl)
 
 ```{r}
 
-if (1=2){
+if (1==2){
   
   dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = "Experiment1", range = "C5:P33", col_names = TRUE)
   dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = "Experiment_COPIA", range = "C5:P33", col_names = TRUE)
@@ -26,6 +26,13 @@ if (1=2){
 }
 
 td <- read.table("../data/dades.txt", header=TRUE, dec=",", sep="\t")
+
+# columnes de temps
+
+temps_vec <- c("TI","T0","T1","T2","T3","T4")
+
+id_vec <- c("ORDRE","NOM","MEDI","BOSSA","M","B","E")
+
 ```
 
 ### Validació de la carrega
@@ -61,19 +68,58 @@ resum <- aggregate(data.frame(N_FILES=rep(1, nrow(td)))
 print(resum)
 
 ```
+
 Com es pot veure, hi ha 7 bosses (B) numerades del 1 a 7 on, en cada bossa tenim una canya diferent (6 en total) i a la setena bossa (anomenada canya de control) que és una bossa de control sense cap canya i serveix per mesurar les posibles variacions de pes de la bossa en el temps.
 
 summary(td)
+
+## Preparació dades
+
+Es calcula les diferencies sobre la bosa buida.
+
+```{r}
+
+
+for(var in temps_vec) {
+  td[[paste0(var,"_DIF")]] <- td[[var]] - td[["TB"]]
+}
+```
+
+
+Es valia que les dades son correctes.
+
+```{r}
+td %>% select(starts_with("T") ) %>% head()
+```
+
+
 
 ## Reestructuració de les dades
 
 Es reestructura el format de dades transversals on les variables de temps estàn en diferents columnes, a un format de dades longitudinals on cada canya y medi tenen difernets files per cada setmana.
 
 ```{r}
-p_td <- reshape(td, direction = "long"
-                , idvar = "NOM", v.names = "PES"
-                , varying = c("TI","T0","T1","T2","T3","T4")
-                , timevar = "SETMANA")
+p_td  <- td %>% 
+  select(all_of(id_vec),all_of(temps_vec)) %>% 
+  reshape(direction = "long"
+          , idvar = "NOM", v.names = "PES"
+          , varying = temps_vec
+          , timevar = "SETMANA")
+```
+
+Ara el mateix pero amb les diferencies.
+
+```{r}
+p_td_dif  <- td %>% 
+  select(all_of(id_vec),all_of(paste0(temps_vec,"_DIF"))) %>% 
+  reshape(direction = "long"
+          , idvar = "NOM", v.names = "PES_DIF"
+          , varying = paste0(temps_vec,"_DIF")
+          , timevar = "SETMANA")
+
+# s'ajunten les dos
+
+p_td_tot <- merge(p_td,p_td_dif)
 ```
 
 # Transformació
@@ -82,7 +128,8 @@ p_td <- reshape(td, direction = "long"
 
 ```{r}
 p_td$SETMANA <- p_td$SETMANA - 1
-head(p_td,2)
+head(p_td,40)
+head(p_td_dif,40)
 
 ```
 
