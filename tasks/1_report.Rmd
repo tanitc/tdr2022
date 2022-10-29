@@ -1,5 +1,5 @@
 ---
-title: "Document"
+title: "Informe de resultats experiment Canyes"
 output: html_document
 date: "2022-10-02"
 ---
@@ -8,6 +8,7 @@ date: "2022-10-02"
 knitr::opts_chunk$set(echo = TRUE)
 suppressPackageStartupMessages(library(tidyverse)) 
 library(readxl) 
+library(ggrepel)
 ```
 
 # Introducció
@@ -29,7 +30,8 @@ td <- read.table("../data/dades.txt", header=TRUE, dec=",", sep="\t")
 
 # columnes de temps
 
-temps_vec <- c("TI","T0","T1","T2","T3","T4")
+#temps_vec <- c("TI","T0","T1","T2","T3","T4")
+temps_vec <- c("T0","T1","T2","T3","T4")
 
 id_vec <- c("ORDRE","NOM","MEDI","BOSSA","M","B","E")
 
@@ -58,15 +60,11 @@ print(resum)
 A continuació s'observa quants tipus de canyes i cuantes files té cada tipus.
 
 ```{r}
-resum <- aggregate(data.frame(N_FILES=rep(1:nrow(td)))
-                   ,list(NOM=td$NOM, MEDI=td$MEDI, BOSSA=td$BOSSA, M=td$M, B=td$B)
-                   ,sum)
 resum <- aggregate(data.frame(N_FILES=rep(1, nrow(td)))
                    ,list(B=td$B, BOSSA=td$BOSSA)
                    ,sum)
 
 print(resum)
-
 ```
 
 Com es pot veure, hi ha 7 bosses (B) numerades del 1 a 7 on, en cada bossa tenim una canya diferent (6 en total) i a la setena bossa (anomenada canya de control) que és una bossa de control sense cap canya i serveix per mesurar les posibles variacions de pes de la bossa en el temps.
@@ -78,21 +76,15 @@ summary(td)
 Es calcula les diferencies sobre la bosa buida.
 
 ```{r}
-
-
 for(var in temps_vec) {
-  td[[paste0(var,"_DIF")]] <- td[[var]] - td[["TB"]]
+  td[[paste0(var,"_DIF")]] <- td[[var]] - td[["TI"]]
 }
-```
 
-
-Es valia que les dades son correctes.
-
-```{r}
+# validem
 td %>% select(starts_with("T") ) %>% head()
 ```
 
-
+Es valida que les dades son correctes.
 
 ## Reestructuració de les dades
 
@@ -117,19 +109,145 @@ p_td_dif  <- td %>%
           , varying = paste0(temps_vec,"_DIF")
           , timevar = "SETMANA")
 
-# s'ajunten les dos
-
-p_td_tot <- merge(p_td,p_td_dif)
 ```
 
 # Transformació
 
-# passem de c
+S'ajunten les dos matrius i es recalcula les setmanes que han pasat des de la primera mesura. 
 
 ```{r}
-p_td$SETMANA <- p_td$SETMANA - 1
-head(p_td,40)
-head(p_td_dif,40)
+p_td_tot <- merge(p_td,p_td_dif)
+p_td_tot$SETMANA <- p_td_tot$SETMANA - 1   #   SI TI aleshores -2
+
+p_td_tot <- p_td_tot %>% mutate(NOM = relevel(NOM, ref = "O2-7C"),MEDI = relevel(MEDI, ref = "0_Aire"),BOSSA = relevel(BOSSA, ref = "7C_control") ,M = relevel(M, ref = "O2"),B = relevel(B, ref = "7C"))
+
+head(p_td_tot)
+```
+
+## Gafics per Medi
+
+```{r fig.width=7, fig.height=3}
+p_td_tot %>% filter(MEDI != "0_Aire") %>% 
+  ggplot(aes(x=SETMANA, y=PES_DIF, color=BOSSA))+
+  geom_line()+
+  geom_point()+
+  geom_text_repel(data=p_td_tot %>% filter(MEDI != "0_Aire",SETMANA==as.numeric(B)%%4+1, !is.na(PES_DIF)), aes(x=SETMANA,y=PES_DIF, label=B), size=2)+
+  scale_color_brewer(palette = "Dark2")+
+  theme(legend.position="bottom")+
+  facet_wrap(vars(MEDI),ncol = 3)
 
 ```
+
+
+## Gafics per Bossa
+
+```{r fig.width=7, fig.height=3}
+p_td_tot %>% filter(BOSSA != "7C_control") %>% 
+  ggplot(aes(x=SETMANA, y=PES_DIF, color=MEDI))+
+  geom_line()+
+  geom_point()+
+  geom_text_repel(data=p_td_tot %>% filter(BOSSA != "7C_control",SETMANA==as.numeric(M)%%3+1), aes(x=SETMANA,y=PES_DIF, label=MEDI), size=2)+
+  scale_color_brewer(palette = "Set1")+
+  theme(legend.position="bottom")+
+  facet_wrap(vars(BOSSA),ncol = 3)
+```
+
+## models separats
+
+```{r, warning=FALSE}
+coef_mat<-expand.grid(levels(p_td_tot$B), levels(p_td_tot$M))
+colnames(coef_mat) <- c("B","M")
+
+for (fila in 1:nrow(coef_mat)){
+  mod <- lm(PES_DIF~SETMANA, p_td_tot %>% filter(B==coef_mat$B[fila],M==coef_mat$M[fila]))
+  coef_mat$INICIAL_coef[coef_mat$B==coef_mat$B[fila] & coef_mat$M==coef_mat$M[fila]] <- coef(mod)[1]
+  coef_mat$PENDENT_coef[coef_mat$B==coef_mat$B[fila] & coef_mat$M==coef_mat$M[fila]] <- coef(mod)[2]
+  coef_mat$INICIAL_es[coef_mat$B==coef_mat$B[fila] & coef_mat$M==coef_mat$M[fila]] <- summary(mod)$coefficients[1,2]
+  coef_mat$PENDENT_es[coef_mat$B==coef_mat$B[fila] & coef_mat$M==coef_mat$M[fila]] <- summary(mod)$coefficients[2,2]
+  coef_mat$INICIAL_t[coef_mat$B==coef_mat$B[fila] & coef_mat$M==coef_mat$M[fila]] <- summary(mod)$coefficients[1,3]
+  coef_mat$PENDENT_t[coef_mat$B==coef_mat$B[fila] & coef_mat$M==coef_mat$M[fila]] <- summary(mod)$coefficients[2,3]
+  coef_mat$INICIAL_pvalor[coef_mat$B==coef_mat$B[fila] & coef_mat$M==coef_mat$M[fila]] <- summary(mod)$coefficients[1,3]
+  coef_mat$PENDENT_pvalor[coef_mat$B==coef_mat$B[fila] & coef_mat$M==coef_mat$M[fila]] <- summary(mod)$coefficients[2,3]
+}
+
+# intervals de confiança
+
+coef_mat <- coef_mat %>%
+  mutate(INICIAL_coef_baix = INICIAL_coef - 1.96 * INICIAL_es, INICIAL_coef_alt = INICIAL_coef + 1.96 * INICIAL_es
+         ,PENDENT_coef_baix = PENDENT_coef - 1.96 * PENDENT_es, PENDENT_coef_alt = PENDENT_coef + 1.96 * PENDENT_es)
+
+coef_mat <- coef_mat %>% filter(B!="7C",M != "O2")
+
+coef_mat
+```
+
+
+
+```{r}
+dodge <- position_dodge(width=0.9)
+coef_mat %>% filter(M != "O2", B != "7C") %>% 
+  ggplot(aes(x = B, y = INICIAL_coef, fill = M)) +
+  geom_col(position = "dodge2") +
+  geom_errorbar(aes(ymin = INICIAL_coef_baix, ymax = INICIAL_coef_alt)
+                , position = position_dodge2(width = 0.5, padding = 0.5))
+
+```
+
+## models conjunts
+
+
+```{r, warning=FALSE}
+coef_mat<-expand.grid(levels(p_td_tot$B), levels(p_td_tot$M))
+colnames(coef_mat) <- c("B","M")
+
+coef_mat <- coef_mat %>% filter(B!="7C",M != "O2")
+
+for (fila in 1:nrow(coef_mat)){
+  
+  
+  mod <- lm(PES_DIF~M*SETMANA,  p_td_tot %>% filter(B==coef_mat$B[fila],M != "O2"))
+  coef_mat$INICIAL_coef[ coef_mat$B==coef_mat$B[fila] & coef_mat$M%in%c("0%","30%","60%")] <- summary(mod)$coefficients[1:3,1]
+  coef_mat$PENDENT_coef[ coef_mat$B==coef_mat$B[fila] & coef_mat$M%in%c("0%","30%","60%")] <- summary(mod)$coefficients[4:6,1]
+
+  coef_mat$INICIAL_es[ coef_mat$B==coef_mat$B[fila] & coef_mat$M%in%c("0%","30%","60%")] <- summary(mod)$coefficients[1:3,2]
+  coef_mat$PENDENT_es[ coef_mat$B==coef_mat$B[fila] & coef_mat$M%in%c("0%","30%","60%")] <- summary(mod)$coefficients[4:6,2]
+
+  coef_mat$INICIAL_t[ coef_mat$B==coef_mat$B[fila] & coef_mat$M%in%c("0%","30%","60%")] <- summary(mod)$coefficients[1:3,3]
+  coef_mat$PENDENT_t[ coef_mat$B==coef_mat$B[fila] & coef_mat$M%in%c("0%","30%","60%")] <- summary(mod)$coefficients[4:6,3]
+  
+  coef_mat$INICIAL_pvalor[ coef_mat$B==coef_mat$B[fila] & coef_mat$M%in%c("0%","30%","60%")] <- summary(mod)$coefficients[1:3,4]
+  coef_mat$PENDENT_pvalor[ coef_mat$B==coef_mat$B[fila] & coef_mat$M%in%c("0%","30%","60%")] <- summary(mod)$coefficients[4:6,4]
+}
+
+# intervals de confiança
+
+coef_mat <- coef_mat %>%
+  mutate(INICIAL_coef_baix = INICIAL_coef - 1.96 * INICIAL_es, INICIAL_coef_alt = INICIAL_coef + 1.96 * INICIAL_es
+         ,PENDENT_coef_baix = PENDENT_coef - 1.96 * PENDENT_es, PENDENT_coef_alt = PENDENT_coef + 1.96 * PENDENT_es)
+
+
+coef_mat
+```
+
+
+### Variació mesura iniciial
+
+```{r}
+dodge <- position_dodge(width=0.9)
+coef_mat %>% filter(M != "O2", B != "7C") %>% 
+  ggplot(aes(x = B, y = INICIAL_coef, fill = M)) +
+  geom_col(position = "dodge2") +
+  geom_errorbar(aes(ymin = INICIAL_coef_baix, ymax = INICIAL_coef_alt)
+                , position = position_dodge2(width = 0.5, padding = 0.5))
+
+```
+
+  geom_col(position = dodge) +
+  geom_errorbar(aes(ymin = lower, ymax = upper), position = dodge, width = 0.25)
+
+geom_col(position = "dodge2") +
+geom_errorbar(
+  aes(ymin = lower, ymax = upper),
+  position = position_dodge2(width = 0.5, padding = 0.5)
+
 
