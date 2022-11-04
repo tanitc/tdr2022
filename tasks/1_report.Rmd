@@ -138,7 +138,7 @@ head(p_td_tot)
 ## Gafics per Medi
 
 ```{r}
-p_td_tot %>% filter(MEDI != "0_Aire", SETMANA<=1) %>% 
+p_td_tot %>% filter(MEDI != "0_Aire", SETMANA<=2) %>% 
   ggplot(aes(x = SETMANA, y = PES, color = NOM)) +
   geom_line() +
   geom_point() +
@@ -192,10 +192,11 @@ head(p_td_tot)
 
 #summary(lm(I(T0 - TI) ~  B + M + SETMANA , data = td %>% filter(MEDI != "0_Aire")))
 
-#summary(lm(PES_DIF ~  B, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) ))
-model <- lm(PES_DIF ~  B*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
-summary(model)
-#summary(lm(PES_DIF ~  B*M, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) ))
+model1 <- lm(PES_DIF ~  B, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+model2 <- lm(PES_DIF ~  B*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+model3 <- lm(PES_DIF ~  B*M, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+model4 <- lm(PES_DIF ~  B*M*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+summary(model4)
 
 #summary(lm(PES_DIF ~  B*M + B*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) ))
 # https://fhernanb.github.io/libro_modelos_mixtos/apli-lme4.html
@@ -207,7 +208,7 @@ summary(model)
 ```
 
 ```{r}
-plot(model)
+plot(model4)
 ```
 
 
