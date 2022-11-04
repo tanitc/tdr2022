@@ -1,6 +1,9 @@
 ---
 title: "Informe de resultats experiment Canyes"
-output: html_document
+author: "Tanit Carrascosa Via"
+output:
+  word_document: default
+  html_document: default
 date: "2022-10-02"
 ---
 
@@ -196,7 +199,7 @@ model1 <- lm(PES_DIF ~  B, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>
 model2 <- lm(PES_DIF ~  B*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
 model3 <- lm(PES_DIF ~  B*M, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
 model4 <- lm(PES_DIF ~  B*M*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
-summary(model4)
+summary(model1)
 
 #summary(lm(PES_DIF ~  B*M + B*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) ))
 # https://fhernanb.github.io/libro_modelos_mixtos/apli-lme4.html
