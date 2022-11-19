@@ -261,7 +261,7 @@ El midó 0%, té un comportament extrany que no es justifica pel pes
 ## Gafics per Bossa
 
 ```{r fig.width=7, fig.height=3, warning = FALSE}
-p_td_tot %>% filter(BOSSA != "7C_control", SETMANA>=0) %>% 
+p_td_tot %>% filter(BOSSA != "7C_control", SETMANA>=-1) %>% 
   ggplot(aes(x=SETMANA, y=PES_DIF, color=MEDI))+
   geom_line()+
   geom_point()+
