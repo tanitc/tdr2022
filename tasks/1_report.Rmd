@@ -13,6 +13,7 @@ suppressPackageStartupMessages(library(tidyverse))
 suppressPackageStartupMessages(library(cowplot))
 library(readxl) 
 library(ggrepel)
+library(scales)
 ```
 
 
@@ -87,6 +88,7 @@ Es calcula les diferencies sobre la bosa buida.
 ```{r}
 for(var in temps_vec) {
   td[[paste0(var,"_DIF")]] <- td[[var]] - td[["TI"]]
+  td[[paste0(var,"_TV")]] <- td[[var]] / td[["TI"]] - 1
 }
 
 # validem
@@ -108,7 +110,7 @@ p_td  <- td %>%
           , timevar = "SETMANA")
 ```
 
-Ara el mateix pero amb les diferencies.
+Ara el mateix pero amb les diferències.
 
 ```{r}
 p_td_dif  <- td %>% 
@@ -120,63 +122,176 @@ p_td_dif  <- td %>%
 
 ```
 
+Finalment amb les taxes de variació.
+
+```{r}
+p_td_tv  <- td %>% 
+  select(all_of(id_vec),all_of(paste0(temps_vec,"_TV"))) %>% 
+  reshape(direction = "long"
+          , idvar = "NOM", v.names = "PES_TV"
+          , varying = paste0(temps_vec,"_TV")
+          , timevar = "SETMANA")
+
+```
+
 # Transformació
 
 S'ajunten les dos matrius i es recalcula les setmanes que han pasat des de la primera mesura. 
 
 ```{r}
-p_td_tot <-  merge(p_td,p_td_dif)
+p_td_tot <-  merge(p_td, p_td_dif)
+p_td_tot <-  merge(p_td_tot, p_td_tv)
 p_td_tot$SETMANA <- p_td_tot$SETMANA - 2   #   SI TI aleshores -2
 
-p_td_tot <- p_td_tot %>% mutate(NOM = relevel(factor(NOM), ref = "O2-7C"),MEDI = relevel(factor(MEDI), ref = "0_Aire"),BOSSA = relevel(factor(BOSSA), ref = "7C_control") ,M = relevel(factor(M), ref = "O2"),B = relevel(factor(B), ref = "7C")) %>% 
+p_td_tot <- p_td_tot %>% mutate(NOM = relevel(factor(NOM), ref = "O2-7C"), MEDI = relevel(factor(MEDI), ref = "0_Aire"), BOSSA = relevel(factor(BOSSA), ref = "7C_control"), M = relevel(factor(M), ref = "O2"), B = relevel(factor(B), ref = "7C")) %>% 
   group_by(BOSSA, SETMANA) %>% 
-  mutate(PES_DMIG = PES - mean(PES), PES_DIF_DMIG = PES_DIF - mean(PES_DIF)) %>% 
+  mutate(PES_DMIG = PES - mean(PES), PES_DIF_DMIG = PES_DIF - mean(PES_DIF), PES_TV_DMIG = PES_TV - mean(PES_TV)) %>% 
   ungroup() %>% as.data.frame()
 
-rownames(p_td_tot) <- paste0(p_td_tot$NOM,"/S",p_td_tot$SETMANA)
+rownames(p_td_tot) <- paste0(p_td_tot$NOM, "/S", p_td_tot$SETMANA)
 head(p_td_tot)
 ```
 
 
-## Gafics per Medi
+## Gafics per Medi del total
 
-```{r}
+```{r fig.width=11, fig.height=4.5, warning = FALSE}
 p_td_tot %>% filter(MEDI != "0_Aire", SETMANA<=3) %>% 
   ggplot(aes(x = SETMANA, y = PES, color = NOM)) +
-  geom_line() +
-  geom_point() +
+  geom_line() + geom_point() +
   theme_bw() +
   facet_wrap(~ NOM, ncol=7) + labs(y = "Pes") + 
   theme(legend.position = "none")
 
 ```
 
-```{r fig.width=7, fig.height=3, warning = FALSE}
-p_td_tot %>% filter(MEDI != "0_Aire") %>% 
-  ggplot(aes(x=SETMANA, y=PES, color=BOSSA))+
-  geom_line()+
-  geom_point()+
-  geom_text_repel(data=p_td_tot %>% filter(MEDI != "0_Aire", !is.na(PES_DIF)), aes(x=SETMANA,y=PES, label=B), size=2)+
+## Taxes de variació sobre el pes inicial per Medi
+
+```{r fig.width=11, fig.height=4.5, warning = FALSE}
+p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=-1) %>% 
+  ggplot(aes(x=SETMANA, y=PES_TV, color=BOSSA))+
+  theme_bw() +
+  geom_line()+geom_point()+
+  scale_y_continuous(labels=percent)+
+  geom_hline(yintercept = 0, color="darkgrey")+
+  geom_text_repel(data=p_td_tot %>% filter(MEDI != "0_Aire", !is.na(PES_TV), SETMANA>=0), aes(x=SETMANA,y=PES_TV, label=B), size=2)+
   scale_color_brewer(palette = "Dark2")+
   theme(legend.position="bottom")+
   facet_wrap(vars(MEDI),ncol = 3)
+```
+
+
+```{r fig.width=8, fig.height=4.5, warning = FALSE}
+p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% 
+  group_by(BOSSA) %>% 
+  summarise(PES_TV_MITJANA = mean(PES_TV), PES_TV_ES = sd(PES_TV)/sqrt(n())) %>% 
+  ungroup() %>% 
+  mutate(PES_TV_MIN = PES_TV_MITJANA - 1.96 * PES_TV_ES
+         ,PES_TV_MAX = PES_TV_MITJANA + 1.96 * PES_TV_ES) %>% 
+  ggplot(aes(x = BOSSA, y = PES_TV_MITJANA, fill = BOSSA)) +
+  geom_col(position = "dodge2") + geom_point() +
+  geom_hline(yintercept = 0, color = "red")+
+  theme_bw() +
+  theme(legend.position = "none") + labs(x="")+
+  geom_errorbar(aes(ymin = PES_TV_MIN, ymax = PES_TV_MAX)
+                , position = position_dodge2(width = 0.5, padding = 0.5))
 
 ```
 
 
-## Gafics per Medi
+```{r}
+model_BOSSA <- lm(PES_TV ~  B, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )  # setmana 0
 
-```{r fig.width=7, fig.height=3, warning = FALSE}
-p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=-1) %>% 
-  ggplot(aes(x=SETMANA, y=PES_DIF, color=BOSSA))+
-  geom_line()+
-  geom_point()+
+summary(model_BOSSA)
+
+```
+
+
+```{r}
+model_SETMANA <- lm(PES_TV ~  B * SETMANA
+              , data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0))
+
+summary(model_SETMANA)
+
+```
+
+
+```{r}
+model_MEDI <- lm(PES_TV ~  B * MEDI
+              , data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0))
+
+summary(model_MEDI)
+
+```
+
+
+```{r fig.width=11, fig.height=4.5, warning = FALSE}
+p_td_tot %>% filter(MEDI != "0_Aire", SETMANA >= 0) %>% 
+  group_by(BOSSA, SETMANA) %>% 
+  summarise(PES_TV = mean(PES_TV)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x=SETMANA, y=PES_TV, color=BOSSA))+
+  theme_bw() +
+  geom_line()+geom_point()+
+  scale_y_continuous(labels=percent)+
   geom_hline(yintercept = 0, color="darkgrey")+
-  geom_text_repel(data=p_td_tot %>% filter(MEDI != "0_Aire", !is.na(PES_DIF), SETMANA>=0), aes(x=SETMANA,y=PES_DIF, label=B), size=2)+
+#  geom_text_repel(data=p_td_tot %>% filter(MEDI != "0_Aire", !is.na(PES_TV), SETMANA>=0), aes(x=SETMANA,y=PES_TV, label=B), size=2)+
   scale_color_brewer(palette = "Dark2")+
-  theme(legend.position="bottom")+
-  facet_wrap(vars(MEDI),ncol = 3)
+  theme(legend.position="bottom")
+```
 
+
+
+
+```{r}
+ggplot(data.frame(Residus = residuals(model1)), aes(x=Residus))+
+  geom_histogram(bins = 20)
+```
+
+
+
+```{r fig.width=11, fig.height=4.5, warning = FALSE}
+data1 <- p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=-1) %>% 
+  mutate(SETMANA_2 = ifelse(SETMANA <= 2, SETMANA, 2))
+data1 <- data1 %>% mutate( PES_TV_PRED = predict(model61, newdata = data1)) %>% 
+  group_by(BOSSA, SETMANA) %>% 
+  summarise(PES_TV = mean(PES_TV), PES_TV_PRED = mean(PES_TV_PRED)) %>% 
+  ungroup()
+
+data1 %>% filter(SETMANA>=0) %>% 
+  ggplot(aes(x=SETMANA, y=PES_TV, color=BOSSA))+
+  theme_bw() +
+  geom_line()+geom_point()+
+  scale_y_continuous(labels=percent)+
+  geom_hline(yintercept = 0, color="darkgrey")+
+  geom_line(aes(x=SETMANA,  y=PES_TV_PRED, color=BOSSA ), linetype = "dashed")+
+#  geom_text_repel(data=p_td_tot %>% filter(MEDI != "0_Aire", !is.na(PES_TV), SETMANA>=0), aes(x=SETMANA,y=PES_TV, label=B), size=2)+
+  scale_color_brewer(palette = "Dark2")+
+  theme(legend.position="bottom")
+```
+
+
+
+
+```{r}
+
+#summary(lm(I(T0 - TI) ~  B + M + SETMANA , data = td %>% filter(MEDI != "0_Aire")))
+
+model5 <- lm(PES_TV ~  B, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )  # setmana 0
+model61 <- lm(PES_TV ~  B*I(ifelse(SETMANA<=1,SETMANA,1)), data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )  # setmana 1
+model62 <- lm(PES_TV ~  B*I(ifelse(SETMANA<=2,SETMANA,2)), data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )  # setmana 2
+model63 <- lm(PES_TV ~  B*I(ifelse(SETMANA<=3,SETMANA,3)), data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )  # setmana 3
+model64 <- lm(PES_TV ~  B*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )  # setmana 4
+#model7 <- lm(PES_TV ~  B*M, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+#model8 <- lm(PES_TV ~  B*M*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+
+summary(model5)
+summary(model61)
+summary(model62)
+summary(model63)
+summary(model64)
+#summary(model7)
+#summary(model8)
 ```
 
 ## Incorporar eix del preu de la canya
@@ -199,10 +314,21 @@ model1 <- lm(PES_DIF ~  B, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>
 model2 <- lm(PES_DIF ~  B*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
 model3 <- lm(PES_DIF ~  B*M, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
 model4 <- lm(PES_DIF ~  B*M*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+
+model5 <- lm(PES_TV ~  B, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+model6 <- lm(PES_TV ~  B*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+model7 <- lm(PES_TV ~  B*M, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+model8 <- lm(PES_TV ~  B*M*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) )
+
 summary(model1)
 summary(model2)
 summary(model3)
 summary(model4)
+
+summary(model5)
+summary(model6)
+summary(model7)
+summary(model8)
 
 #summary(lm(PES_DIF ~  B*M + B*SETMANA, data = p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=0) ))
 # https://fhernanb.github.io/libro_modelos_mixtos/apli-lme4.html
@@ -218,47 +344,11 @@ plot(model4)
 ```
 
 
-## Diferencies Temps 0 (primer dia)
-
-
-```{r fig.width=6, fig.height=3, warning = FALSE}
-
-
-
-VAL_MIN <- min(td0 %>% filter(MEDI != "0_Aire", B=="2M") %>% mutate(VAL_MIN = min(min(TI), min(T0), min(T1))) %>% select(VAL_MIN))
-VAL_MAX <- min(td0 %>% filter(MEDI != "0_Aire", B=="2M") %>% mutate(VAL_MAX = max(min(TI), max(T0), max(T1))) %>% select(VAL_MAX))
-
-p0<-td0 %>% filter(MEDI != "0_Aire", B=="2M") %>% 
-  ggplot(aes(x=TI, y=T0, color=BOSSA))+
-  geom_abline(linetype = "dashed", color="grey")+
-  geom_point()+
-  ggtitle("Setmana Inicial")+
-  xlim(VAL_MIN,VAL_MAX)+ ylim(VAL_MIN,VAL_MAX)+
-  geom_text_repel(aes(label=NOM), size=2)+
-  scale_color_brewer(palette = "Dark2")+
-  theme(legend.position="bottom")
-
-p1<-td0 %>% filter(MEDI != "0_Aire", B=="2M") %>% 
-  ggplot(aes(x=TI, y=T1, color=BOSSA))+
-  geom_abline(linetype = "dashed", color="grey")+
-  geom_point()+
-  ggtitle("1a setmana")+
-  xlim(VAL_MIN,VAL_MAX)+ ylim(VAL_MIN,VAL_MAX)+
-  geom_text_repel(aes(label=NOM), size=2)+
-  scale_color_brewer(palette = "Dark2")+
-  theme(legend.position="bottom")
-
-# arrange two plots into one column
-plot_grid(p0, p1, ncol = 2)
-
+```{r}
+plot(model8)
 ```
 
-El midó 0%, té un comportament extrany que no es justifica pel pes  
-
-
-
-
-## Gafics per Bossa
+## Diferencies per Bossa
 
 ```{r fig.width=7, fig.height=3, warning = FALSE}
 p_td_tot %>% filter(BOSSA != "7C_control", SETMANA>=-1) %>% 
@@ -266,6 +356,18 @@ p_td_tot %>% filter(BOSSA != "7C_control", SETMANA>=-1) %>%
   geom_line()+
   geom_point()+
   geom_text_repel(data=p_td_tot %>% filter(BOSSA != "7C_control", SETMANA>=0), aes(x=SETMANA,y=PES_DIF, label=M), size=2)+
+  scale_color_brewer(palette = "Set1")+
+  theme(legend.position="bottom")+
+  facet_wrap(vars(BOSSA),ncol = 3)
+```
+
+## Taxes de Variació per Bossa
+
+```{r fig.width=7, fig.height=3, warning = FALSE}
+p_td_tot %>% filter(BOSSA != "7C_control", SETMANA>=-1) %>%
+  ggplot(aes(x=SETMANA, y=PES_TV, color=MEDI))+
+  geom_line()+geom_point()+
+  geom_text_repel(data=p_td_tot %>% filter(BOSSA != "7C_control", SETMANA>=0), aes(x=SETMANA,y=PES_TV, label=M), size=2)+
   scale_color_brewer(palette = "Set1")+
   theme(legend.position="bottom")+
   facet_wrap(vars(BOSSA),ncol = 3)
@@ -369,4 +471,71 @@ geom_errorbar(
   aes(ymin = lower, ymax = upper),
   position = position_dodge2(width = 0.5, padding = 0.5)
 
+
+
+
+## Diferencies Temps 0 (primer dia)
+
+
+```{r fig.width=6, fig.height=3, warning = FALSE}
+
+
+
+VAL_MIN <- min(td0 %>% filter(MEDI != "0_Aire", B=="2M") %>% mutate(VAL_MIN = min(min(TI), min(T0), min(T1))) %>% select(VAL_MIN))
+VAL_MAX <- min(td0 %>% filter(MEDI != "0_Aire", B=="2M") %>% mutate(VAL_MAX = max(min(TI), max(T0), max(T1))) %>% select(VAL_MAX))
+
+p0<-td0 %>% filter(MEDI != "0_Aire", B=="2M") %>% 
+  ggplot(aes(x=TI, y=T0, color=BOSSA))+
+  geom_abline(linetype = "dashed", color="grey")+
+  geom_point()+
+  ggtitle("Setmana Inicial")+
+  xlim(VAL_MIN,VAL_MAX)+ ylim(VAL_MIN,VAL_MAX)+
+  geom_text_repel(aes(label=NOM), size=2)+
+  scale_color_brewer(palette = "Dark2")+
+  theme(legend.position="bottom")
+
+p1<-td0 %>% filter(MEDI != "0_Aire", B=="2M") %>% 
+  ggplot(aes(x=TI, y=T1, color=BOSSA))+
+  geom_abline(linetype = "dashed", color="grey")+
+  geom_point()+
+  ggtitle("1a setmana")+
+  xlim(VAL_MIN,VAL_MAX)+ ylim(VAL_MIN,VAL_MAX)+
+  geom_text_repel(aes(label=NOM), size=2)+
+  scale_color_brewer(palette = "Dark2")+
+  theme(legend.position="bottom")
+
+# arrange two plots into one column
+plot_grid(p0, p1, ncol = 2)
+
+```
+
+El midó 0%, té un comportament extrany que no es justifica pel pes  
+
+
+## Totals per Medi
+
+```{r fig.width=11, fig.height=4.5, warning = FALSE}
+p_td_tot %>% filter(MEDI != "0_Aire") %>% 
+  ggplot(aes(x=SETMANA, y=PES, color=BOSSA))+
+  geom_line()+geom_point()+
+  geom_text_repel(data=p_td_tot %>% filter(MEDI != "0_Aire", !is.na(PES_DIF)), aes(x=SETMANA,y=PES, label=B), size=2)+
+  scale_color_brewer(palette = "Dark2")+
+  theme(legend.position="bottom")+
+  facet_wrap(vars(MEDI),ncol = 3)
+```
+
+
+
+## Diferències sobre el pes inicial per Medi
+
+```{r fig.width=11, fig.height=4.5, warning = FALSE}
+p_td_tot %>% filter(MEDI != "0_Aire", SETMANA>=-1) %>% 
+  ggplot(aes(x=SETMANA, y=PES_DIF, color=BOSSA))+
+  geom_line()+geom_point()+
+  geom_hline(yintercept = 0, color="darkgrey")+
+  geom_text_repel(data=p_td_tot %>% filter(MEDI != "0_Aire", !is.na(PES_DIF), SETMANA>=0), aes(x=SETMANA,y=PES_DIF, label=B), size=2)+
+  scale_color_brewer(palette = "Dark2")+
+  theme(legend.position="bottom")+
+  facet_wrap(vars(MEDI),ncol = 3)
+```
 

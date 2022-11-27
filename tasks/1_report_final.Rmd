@@ -1,0 +1,244 @@
+---
+title: "Informe de resultats experiment Canyes"
+author: "Tanit Carrascosa Via"
+output:
+  word_document:
+    reference_docx: estils.docx
+  html_document: default
+date: "2022-10-02"
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+suppressPackageStartupMessages(library(tidyverse)) 
+suppressPackageStartupMessages(library(cowplot))
+library(readxl) 
+library(ggrepel)
+library(scales)
+library(knitr)
+```
+
+### RESULTATS
+
+```{r include=FALSE}
+
+if (1==2){
+  
+  dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = "Experiment1", range = "C5:P33", col_names = TRUE)
+  #dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = "Experiment_COPIA", range = "C5:P33", col_names = TRUE)
+  write.table(dat, file="../data/dades.txt", row.names=FALSE, dec=",", sep="\t")
+}
+
+td <- read.table("../data/dades.txt", header=TRUE, dec=",", sep="\t")
+
+td0 <- td
+
+#td[td$NOM=="0%-2M","TI"] <- 7.32
+
+# columnes de temps
+
+temps_vec <- c("TI","T0","T1","T2","T3","T4")
+#temps_vec <- c("T0","T1","T2","T3","T4")
+
+id_vec <- c("ORDRE","NOM","MEDI","BOSSA","M","B","E")
+
+```
+
+#### Pes inicial de les bosses sense canyes
+
+En les mesures que hem pres, el pes de la bosses l'hem sumat directament al pes de les canyes. No obstant això, per saber el seu pes inicial sense canyes, hem agafat una mostra de 10 bosses obtenint una mitjana de `r format(round(mean(unique(td$TB)),2), dec=",")` g, un valor mínim de `r format(round(min(unique(td$TB)),2), dec=",")` g i un màxim de `r format(round(max(unique(td$TB)),2), dec=",")` g.
+
+Aquestes diferències, podem suposar que son degudes als següents dos factors: canvis en la pròpia fabricació de la bossa; i canvis en el pes dels elements afegits en el procés d'etiquetatge de cada mostra. De totes formes, com hem dit, el pes inicial en buit, no influirà en l'observació posterior de possibles variacions en el pesos dels conjunts formats per la bossa i les canyes.
+
+#### Taula de pesos setmanals de les mostres
+
+A continuació presentem la taula amb els resultats dels pesos de les 28 mostres observades en 6 moments del temps.
+
+La columna MEDI conté 4 elements definits de la següent forma:
+
+- **1_0% Vinagre**: Medi format per aigua destil·lada.
+- **2_30% Vinagre**:  Medi format per una dissolució del 30% de Vinagre^[Detallat en l'apartat dels Materials].
+- **3_60% Vinagre**:  Medi format per una dissolució del 60% de Vinagre.
+- **0_Aire**:  Medi de control format per aire ambient amb l'objectiu de mesurar les possibles variacions del pes sense cap exposició a un medi aquós.
+
+La columna BOSSA conté 7 elements definits de la següent forma^[Materials detallats a l'apartat de Materials]:
+
+- **1L_plàstic**: Bossa formada per 2 canyes de plàstic. 
+- **2M_midó**: Bossa formada per 2 canyes de midó. 
+- **3B_bambú**: Bossa formada per 2 canyes de bambú. 
+- **4F_fusta**: Bossa formada per 2 canyes de fusta. 
+- **5S_sucre**: Bossa formada per 2 canyes de sucre. 
+- **6A_paper**: Bossa formada per 2 canyes de paper. 
+- **7C_control**: Bossa de control sense canyes per mesurar la possible variació del pes de la bossa buida dins el medi corresponent. 
+
+La columna ETIQUETA indica la combinació de l'abreviatura del MEDI seguida d'un guió i l'abreviatura de la BOSSA corresponent al tipus de canya. Com a exemple, indiquem que l'etiqueta "30%-6A" indica que la mostra està formada per una bossa amb 2 canyes de paper exposades a un medi d'una dissolució del 30% de vinagre.
+
+Indiquem les mesures dels pesos a les columnes T0, T1, T2, T3 i T4 com expliquem a continuació: 
+
+- **TI**: Pesatge inicial en grams de les mostres formades per una bossa etiquetada i 2 canyes (excepte en les mostres de control), previ a submergir-les en el medi corresponent.
+- **T0**: Pesatge en grams de les mostres posterior a 24 hores d'exposició en el medi més 24 hores del procés d'assecat a l'estufa^[Segons s'ha explicat a l'apartat del Procediment].
+- **T1, T2, T3 i T4**, : Pesatge en grams de les mostres posterior a 6 dies d'exposició en el medi més 24 hores del procés d'assecat a l'estufa, durant la corresponent setmana X indicada en l'índex de la columna (TX)^[Veure explicació del canvi de precisió en la balança electrónica utlitzada durant aquestes setmanes].  
+
+<br>
+
+```{r echo=FALSE}
+resum <- td %>% rename(ETIQUETA = NOM) %>% select(ETIQUETA, MEDI, BOSSA, TI, T0, T1, T2, T3, T4)
+
+kable(resum, format.args = list(decimal.mark = ',', big.mark = "."))
+```
+
+*Figura 1: Taula amb els pesos de les mostres en cada setmana de l'experiment.*
+
+Per saber interpretar la taula expliquem el significat de la primera fila formada per l'etiqueta "0%-1L" corresponent a la mostra de 2 canyes de plàstic exposades a un medi d'aigua destil·lada on hem mesurat un pes de 6,71 g previ a l'exposició de la mostra al medi, 6,62 g posterior a l'exposició d'un dia en el medi, 6,64 g una setmana posterior, 6,65 g a la segona setmana, 6,65 g tercera setmana i 6,64 g a la quarta setmana. 
+
+#### Descripció grafica del pes de les bosses amb canyes previ a l'exposició en el medi
+
+A continació, utilitzant el programa estadístic R^[veure la bibliografia web], presentem a continucació el pes de les 28 mostres (suma de bossa i canyes) en el moment previ a l'exposició al medi. Es presenta de totes formes quin será el medi al que s'exposarà cada mostra.
+
+```{r echo=FALSE}
+p_td  <- td %>% 
+  select(all_of(id_vec),all_of(temps_vec)) %>% 
+  reshape(direction = "long"
+          , idvar = "NOM", v.names = "PES"
+          , varying = temps_vec
+          , timevar = "SETMANA") %>% 
+  mutate(SETMANA = SETMANA - 2  
+         , NOM = relevel(factor(NOM), ref = "O2-7C")
+         , MEDI = relevel(factor(MEDI), ref = "0_Aire")
+         , BOSSA = relevel(factor(BOSSA), ref = "7C_control")
+         , M = relevel(factor(M), ref = "O2")
+         , B = relevel(factor(B), ref = "7C")) %>% 
+  as.data.frame()
+
+rownames(p_td) <- paste0(p_td$NOM, "/S", p_td$SETMANA)
+```
+
+```{r echo=FALSE, fig.width=11, fig.height=4.5, warning = FALSE}
+p_td %>% filter(SETMANA == -1) %>% 
+  arrange(BOSSA,MEDI) %>% 
+  ggplot(aes(x = BOSSA, y = PES, fill = BOSSA, group=MEDI)) +
+  geom_bar(stat="identity") +
+  theme_bw() +
+  facet_wrap(~ MEDI, nrow=4) + labs(y = "Pes") + 
+  theme(legend.position = "none")
+
+```
+
+*Figura 2: Gráfic de barres del pes (TI) previ a l'exposició al medi.*
+
+Observem unes variacions del pes entre el diferents tipus de canya, essent, per ordre, el Bambú la de major pes, després la de Sucre, Paper, Fusta i finalment Midó y Plástic en darrer lloc. Es conforma quela de control (bossa sense canya) está en darrer lloc 
+
+També podem observar que, com era d'esperar, el pesos iniciales de les mostres, previs a l'exposció al medi, son molt similars entre els difents medis als que seràn exposades.
+
+#### Descripció grafica dels pesos setmanals de les mostres
+
+Presentem ara la taula de pesos setmanals de les mostres. Veiem 28 cuadrants coorresponents a les 28 mostres. En cada cuadrant podem veure les 6 mesures de pesos setmanals. Els quadrants estan organitzats en 7 columnes, corresponents a la bossa de cotrol més els 6 tipus de canya i 4 files, corresponents als 4 medis d'exposició.
+
+```{r echo=FALSE, fig.width=11, fig.height=4.5, warning = FALSE}
+p_td %>% filter(SETMANA<=4) %>% 
+  ggplot(aes(x = SETMANA, y = PES, color = NOM)) +
+  geom_line() + geom_point() +
+  theme_bw() +
+  facet_wrap(~ NOM, ncol=7) + labs(x = "Setmana", y = "Pes") + 
+  theme(legend.position = "none")
+
+```
+
+*Figura 3: Gràfic dels pesos de les mostres en cada setmana de l'experiment^[la Setmana -1 indica el temps TI (previ a l'exposició al medi), la 0 és el T0, la 1 es T1...].*
+
+Observem petites variacions entre el pes previ a l'exposició (setmana -1) y el pes de la Setmana 0. Les setmanes posteriors, en general s'observen poques variacions.
+
+#### Preparació de les dades
+
+Amb l'objectiu de mesurar les variacons del pes entre les setmanes i de poder comparar aquestes variacions entre les diferents tipus de canya, definim la taxa de variació del pes de cada setmana, respecte al pes inicial previ a l'exposició al medi:
+
+$$
+MOSTRA\_TV\_TX = 100 * \left (\frac{PES\_MOSTRA\_TX}{PES\_MOSTRA\_TI}  - 1 \right )\% 
+$$
+
+*Figura 4: Fórmula de la taxa de variació del pes de la mostra en la setmana X (TX) respecte el pes previ a l'exposició (TI).*
+
+```{r echo=FALSE}
+for(var in temps_vec) {
+  td[[paste0(var,"_TV")]] <- td[[var]] / td[["TI"]] - 1
+}
+
+p_td_tv  <- td %>% 
+  select(all_of(id_vec),all_of(paste0(temps_vec,"_TV"))) %>% 
+  reshape(direction = "long"
+          , idvar = "NOM", v.names = "PES_TV"
+          , varying = paste0(temps_vec,"_TV")
+          , timevar = "SETMANA") %>% 
+  mutate(SETMANA = SETMANA - 2  
+         , NOM = relevel(factor(NOM), ref = "O2-7C")
+         , MEDI = relevel(factor(MEDI), ref = "0_Aire")
+         , BOSSA = relevel(factor(BOSSA), ref = "7C_control")
+         , M = relevel(factor(M), ref = "O2")
+         , B = relevel(factor(B), ref = "7C")) %>% 
+  as.data.frame()
+
+rownames(p_td_tv) <- paste0(p_td_tv$NOM, "/S", p_td_tv$SETMANA)
+```
+
+#### Descripció grafica de les taxes de variació sobre el pes inicial per Medi
+
+```{r echo=FALSE, fig.width=11, fig.height=4.5, warning = FALSE}
+p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=-1) %>% 
+  ggplot(aes(x=SETMANA, y=PES_TV, color=BOSSA))+
+  theme_bw() +
+  geom_line()+geom_point()+
+  scale_y_continuous(labels=percent)+
+  geom_hline(yintercept = 0, color="darkgrey")+
+  geom_text_repel(data=p_td_tv %>% filter(MEDI != "0_Aire", !is.na(PES_TV), SETMANA>=0), aes(x=SETMANA,y=PES_TV, label=B), size=3)+
+  scale_color_brewer(palette = "Dark2")+
+  theme(legend.position="bottom")+ labs(x = "Setmana", y = "Taxa de variació del Pes TX sobre TI") + 
+  facet_wrap(vars(MEDI),ncol = 3)
+```
+
+
+```{r echo=FALSE, fig.width=8, fig.height=4.5, warning = FALSE}
+p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% 
+  group_by(BOSSA) %>% 
+  summarise(PES_TV_MITJANA = mean(PES_TV), PES_TV_ES = sd(PES_TV)/sqrt(n())) %>% 
+  ungroup() %>% 
+  mutate(PES_TV_MIN = PES_TV_MITJANA - 1.96 * PES_TV_ES
+         ,PES_TV_MAX = PES_TV_MITJANA + 1.96 * PES_TV_ES) %>% 
+  ggplot(aes(x = BOSSA, y = PES_TV_MITJANA, fill = BOSSA)) +
+  geom_col(position = "dodge2") + geom_point() +
+  scale_y_continuous(labels=percent)+
+  scale_color_brewer(palette = "Dark2")+
+  geom_hline(yintercept = 0, color = "red")+
+  theme_bw() +
+  theme(legend.position = "none") + labs(x="")+
+  geom_errorbar(aes(ymin = PES_TV_MIN, ymax = PES_TV_MAX)
+                , position = position_dodge2(width = 0.5, padding = 0.5))
+
+```
+
+
+
+```{r }
+model_BOSSA <- lm(PES_TV ~  B, data = p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) )  # setmana 0
+
+summary(model_BOSSA)
+
+```
+
+
+```{r}
+model_SETMANA <- lm(PES_TV ~  B * SETMANA
+              , data = p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0))
+
+summary(model_SETMANA)
+
+```
+
+
+```{r}
+model_MEDI <- lm(PES_TV ~  B * MEDI
+              , data = p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0))
+
+summary(model_MEDI)
+
+```
