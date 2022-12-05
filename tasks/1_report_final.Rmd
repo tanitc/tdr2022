@@ -154,7 +154,7 @@ Observem petites variacions entre el pes previ a l'exposició (setmana -1) y el 
 Amb l'objectiu de mesurar les variacons del pes entre les setmanes i de poder comparar aquestes variacions entre les diferents tipus de canya, definim la taxa de variació del pes de cada setmana, respecte al pes inicial previ a l'exposició al medi:
 
 $$
-MOSTRA\_TV\_TX = 100 * \left (\frac{PES\_MOSTRA\_TX}{PES\_MOSTRA\_TI}  - 1 \right )\% 
+TV\_MOSTRA\_TX = 100 * \left (\frac{PES\_MOSTRA\_TX}{PES\_MOSTRA\_TI}  - 1 \right )\% 
 $$
 
 *Figura 4: Fórmula de la taxa de variació del pes de la mostra en la setmana X (TX) respecte el pes previ a l'exposició (TI).*
@@ -197,7 +197,80 @@ p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=-1) %>%
 ```
 
 
-```{r echo=FALSE, fig.width=8, fig.height=4.5, warning = FALSE}
+```{r}
+t1<-p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% mutate(TV_MOSTRA_TX=round(PES_TV,5)) %>% select(B, SETMANA, M, TV_MOSTRA_TX) %>% arrange(B, SETMANA, M) %>% filter(which(SETMANA>=0)<36)
+t2<-p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% mutate(TV_MOSTRA_TX=round(PES_TV,5)) %>% select(B, SETMANA, M,TV_MOSTRA_TX) %>% arrange(B, SETMANA, M) %>% filter(which(SETMANA>=0)>35,which(SETMANA>=0)<71)
+t3<-p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% mutate(TV_MOSTRA_TX=round(PES_TV,5)) %>% select(B, SETMANA, M,TV_MOSTRA_TX) %>% arrange(B, SETMANA, M) %>% filter(which(SETMANA>=0)>70)
+t0<-cbind(t1,t1,t3)
+kable(t0,row.names = FALSE)
+```
+
+
+$$
+\mu \in 
+              \left[ \hat\mu - |z_{\alpha/2}|\frac{1}{\sqrt n}s,
+                      \hat\mu + |z_{\alpha/2}|\frac{1}{\sqrt n}s \right]$$
+
+
+
+```{r}
+summ_B <- p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% rename(TV_MOSTRA_TX = PES_TV) %>% 
+  group_by(B) %>% summarise(N_OBS=n(), B_MITJANA = mean(TV_MOSTRA_TX), B_DESV_EST = sd(TV_MOSTRA_TX), B_ERR_EST = sd(TV_MOSTRA_TX)/sqrt(n())
+                            , INTERVAL_INF = B_MITJANA - 1.96 *B_ERR_EST
+                            , INTERVAL_SUP = B_MITJANA + 1.96 *B_ERR_EST) %>% ungroup()
+
+summ_B
+
+```
+
+
+
+
+```{r include=FALSE}
+graf<- list()
+
+for(vari in 1:7){
+  
+  x1 <- seq(summ_B$B_MITJANA[vari] - 4 * summ_B$B_DESV_EST[vari]
+            , summ_B$B_MITJANA[vari] + 4 * summ_B$B_DESV_EST[vari], length = 100)
+  y0 <- 1/(sqrt(2*pi))*exp(-((x1-summ_B$B_MITJANA[vari])/summ_B$B_DESV_EST[vari] )^2/2)
+  y1 <- y0/summ_B$B_DESV_EST[vari]
+  y1 <- 8*y1/max( y0/ min(summ_B$B_DESV_EST))
+  df1 <- data.frame(x1,y1)
+  #print(df1)
+
+  df2 <-  p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% rename(TV_MOSTRA_TX = PES_TV) %>% 
+    filter(B==summ_B$B[[vari]])
+  
+  graf[[vari]] <- df2 %>% 
+  ggplot(aes(x=TV_MOSTRA_TX))+
+  geom_histogram(bins=8,fill="cyan")+
+  ylim(c(0,8))+
+  xlim(c(min(df2$TV_MOSTRA_TX),max(df2$TV_MOSTRA_TX)))+
+  geom_vline(xintercept = summ_B$B_MITJANA[vari], color="blue")+
+  geom_vline(xintercept = summ_B$INTERVAL_INF[vari], color="orange", linetype = "dashed")+
+  geom_vline(xintercept = summ_B$INTERVAL_SUP[vari], color="orange", linetype = "dashed")+
+  geom_line(data=df1, aes(x=x1,y=y1),color = "orange", size = 1) +
+  geom_area(data=df1[df1$x1 > summ_B$INTERVAL_INF[vari] & df1$x1 < summ_B$INTERVAL_SUP[vari],], aes(x=x1,y=y1), fill = "orange", alpha = 0.3) +
+  labs(x = paste0("TV_MOSTRA_TX: ",summ_B$B[[vari]]), y = "Nº Observacions")+ 
+  theme_bw() 
+
+ # print(graf[[vari]] )
+}
+
+```
+
+
+```{r echo=FALSE, fig.width=11, fig.height=5, warning = FALSE}
+plot_grid(graf[[1]], graf[[2]], graf[[3]], graf[[4]], graf[[5]], graf[[6]], graf[[7]], ncol = 4 )
+```
+
+
+
+
+
+
+```{r echo=FALSE, fig.width=8, fig.height=3, warning = FALSE}
 p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% 
   group_by(BOSSA) %>% 
   summarise(PES_TV_MITJANA = mean(PES_TV), PES_TV_ES = sd(PES_TV)/sqrt(n())) %>% 
