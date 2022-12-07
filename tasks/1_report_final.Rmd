@@ -76,7 +76,7 @@ p_td_exp1 %>%
   geom_line() + geom_point() +
   theme_bw() +
   ylim(c(0,3.5))+
-  geom_text_repel(data=p_td_exp1 %>% filter(MES==2) , aes(x=MES,y=PES, label=NOM), size=4)+
+  geom_text_repel(data=p_td_exp1 %>% filter(MES==2) , aes(x=MES,y=PES, label=NOM), size=3)+
   scale_color_brewer(palette = "Dark2")+
 #  facet_wrap(~ NOM, ncol=3) + labs(x = "Mes", y = "Pes") + 
   theme(legend.position = "bottom")
