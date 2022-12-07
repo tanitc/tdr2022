@@ -1,0 +1,7 @@
+"ORDRE"	"NOM"	"MEDI"	"M"	"Experiment"	"TI"	"T1"	"T2"
+1	"AE-1L"	"Adob ecològic"	"AE"	0	0,435	0,4399	0,456
+2	"AE-2M"	"Adob ecològic"	"AE"	0	0,6223	0,6251	0,63
+3	"AE-3B"	"Adob ecològic"	"AE"	0	3,322	3,322	3,31
+4	"AE-4F"	"Adob ecològic"	"AE"	0	0,9908	0,9829	0,98
+5	"AE-5S"	"Adob ecològic"	"AE"	0	1,997	1,9508	1,95
+6	"AE-6A"	"Adob ecològic"	"AE"	0	1,107	1,1166	1,11

@@ -26,11 +26,14 @@ library(knitr)
 if (1==2){
   
   dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = "Experiment1", range = "C5:P33", col_names = TRUE)
+  dat_Exp1<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = "Experiment no valid", range = "A1:H7", col_names = TRUE)
   #dat<-read_excel("~/e/griu/Crea una carpeta/Dropbox/upf/DISSENY_EXPERIMENT.xlsx",sheet = "Experiment_COPIA", range = "C5:P33", col_names = TRUE)
   write.table(dat, file="../data/dades.txt", row.names=FALSE, dec=",", sep="\t")
+  write.table(dat_Exp1, file="../data/dades_exp1.txt", row.names=FALSE, dec=",", sep="\t")
 }
 
 td <- read.table("../data/dades.txt", header=TRUE, dec=",", sep="\t")
+td_exp1 <- read.table("../data/dades_exp1.txt", header=TRUE, dec=",", sep="\t")
 
 td0 <- td
 
@@ -39,11 +42,52 @@ td0 <- td
 # columnes de temps
 
 temps_vec <- c("TI","T0","T1","T2","T3","T4")
+temps_vec_exp1 <- c("TI","T1","T2")
 #temps_vec <- c("T0","T1","T2","T3","T4")
 
 id_vec <- c("ORDRE","NOM","MEDI","BOSSA","M","B","E")
+id_vec_exp1 <- c("ORDRE","NOM","MEDI","M")
 
 ```
+
+## Experiment 1
+
+#### Descripció grafica dels pesos mensuals de les mostres
+
+Presentem ara la taula de pesos mensuals de les mostres. Veiem 28 cuadrants coorresponents a les 28 mostres. En cada cuadrant podem veure les 6 mesures de pesos setmanals. Els quadrants estan organitzats en 7 columnes, corresponents a la bossa de cotrol més els 6 tipus de canya i 4 files, corresponents als 4 medis d'exposició.
+
+```{r echo=FALSE, warning = FALSE}
+p_td_exp1  <- td_exp1 %>% 
+  select(all_of(id_vec_exp1),all_of(temps_vec_exp1)) %>% 
+  reshape(direction = "long"
+          , idvar = "NOM", v.names = "PES"
+          , varying = temps_vec_exp1
+          , timevar = "MES") %>% 
+  mutate(MES = MES - 1  
+         , NOM = factor(NOM)
+         , MEDI = factor(MEDI)
+         , M = factor(M)) %>% 
+  as.data.frame()
+
+#rownames(p_td_exp1) <- paste0(p_td$NOM, "/M", p_td$MES)
+
+p_td_exp1 %>% 
+  ggplot(aes(x = MES, y = PES, color = NOM)) +
+  geom_line() + geom_point() +
+  theme_bw() +
+  ylim(c(0,3.5))+
+  geom_text_repel(data=p_td_exp1 %>% filter(MES==2) , aes(x=MES,y=PES, label=NOM), size=4)+
+  scale_color_brewer(palette = "Dark2")+
+#  facet_wrap(~ NOM, ncol=3) + labs(x = "Mes", y = "Pes") + 
+  theme(legend.position = "bottom")
+
+```
+
+*Figura 0: Gràfic dels pesos de les mostres en cada mes de l'experiment.*
+
+No s'observen variacions entre el pes previ a l'exposició (mes 0) i el pesos dels 2 mesos posteriors (T1 i T2).
+
+## Experiment 2
 
 #### Pes inicial de les bosses sense canyes
 
@@ -190,7 +234,7 @@ p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=-1) %>%
   geom_line()+geom_point()+
   scale_y_continuous(labels=percent)+
   geom_hline(yintercept = 0, color="darkgrey")+
-  geom_text_repel(data=p_td_tv %>% filter(MEDI != "0_Aire", !is.na(PES_TV), SETMANA>=0), aes(x=SETMANA,y=PES_TV, label=B), size=3)+
+  geom_text_repel(data=p_td_tv %>% filter(MEDI != "0_Aire", !is.na(PES_TV), SETMANA==4), aes(x=SETMANA,y=PES_TV, label=B), size=3)+
   scale_color_brewer(palette = "Dark2")+
   theme(legend.position="bottom")+ labs(x = "Setmana", y = "Taxa de variació del Pes TX sobre TI") + 
   facet_wrap(vars(MEDI),ncol = 3)
@@ -205,26 +249,42 @@ t0<-cbind(t1,t1,t3)
 kable(t0,row.names = FALSE)
 ```
 
+Per tal de concloure si hi ha hagut o no un grau de degradació rellevant, farem serir el concepte de interval de confiança sobre la mitjana de les taxes de variació del pes per cada tipus de canya sota la hipotesi d'una (distribució normal amb desviació típica desconeguda)[Veure detall al següent [enllaç](https://ca.wikipedia.org/wiki/Interval_de_confian%C3%A7a#Interval_de_confian%C3%A7a_per_a_la_mitjana_d'una_poblaci%C3%B3_normal_amb_desviaci%C3%B3_t%C3%ADpica_desconeguda)].
 
-$$
-\mu \in 
-              \left[ \hat\mu - |z_{\alpha/2}|\frac{1}{\sqrt n}s,
-                      \hat\mu + |z_{\alpha/2}|\frac{1}{\sqrt n}s \right]$$
+El resum del cálculs que es farem son els segïuents: 
 
+Mitjana
+$$ {\overline {X}}={\frac {\sum _{i=1}^{n}X_{i}}{n}} $$
 
+Desviació típica:
 
-```{r}
+$$ S={\sqrt {\frac {\sum _{i=1}^{n}(X_{i}-{\overline {X}})^{2}}{n-1}}} $$
+
+Llavors, l'interval amb nivell de confiança $ \gamma \in (0,1) $ és
+
+$$ {\Big [}{\overline {X}}-t_{\gamma }\,{\frac {S}{\sqrt {n}}},\,{\overline {X}}+t_{\gamma }\,{\frac {S}{\sqrt {n}}}{\Big ]} $$
+
+on $ t_{\gamma } $ és el nombre tal que 
+
+$$ P(-t_{\gamma }\leq T_{n-1}\leq t_{\gamma })=\gamma $$
+
+on $ T_{n-1} $  és una variable aleatòria amb distribució $ t $ de Student amb $ n-1 $ graus de llibertat.
+
+En resum, si la desviació típica $ d $ és desconeguda, aleshores per calcular l'interval de confiança per a  $ m $ fem dos canvis:
+
+- Canviem la quantitat desconeguda $ d $ per l'estimació $ S $ .
+- Canviem el valor $ z_{\gamma } $ de la fórmula obtingut amb una llei normal estàndard pel valor $ t_{\gamma } $ calculat a partir d'una variable $ t $ de Student amb $ n-1 $ graus de llibertat.
+
+```{r include=FALSE}
 summ_B <- p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% rename(TV_MOSTRA_TX = PES_TV) %>% 
   group_by(B) %>% summarise(N_OBS=n(), B_MITJANA = mean(TV_MOSTRA_TX), B_DESV_EST = sd(TV_MOSTRA_TX), B_ERR_EST = sd(TV_MOSTRA_TX)/sqrt(n())
                             , INTERVAL_INF = B_MITJANA - 1.96 *B_ERR_EST
                             , INTERVAL_SUP = B_MITJANA + 1.96 *B_ERR_EST) %>% ungroup()
 
-summ_B
 
 ```
 
-
-
+En primer lloc, per tal d'entendre millor els diferents valors que pren la taxa de variació del pes de cada tipus de canya al llarg de les 4 setmanes (15 observacions per cada tipus de canya), mostrem l'histograma de freqüencies, cojuntament amb la forma de la (distribució normal)[Veure referencia a (l'enllaç)[https://ca.wikipedia.org/wiki/Distribuci%C3%B3_normal]]. Adicionalment es presenta la mitjana en forma de línia blava vertical i l'interval de confiança que s'ha construit:
 
 ```{r include=FALSE}
 graf<- list()
@@ -265,10 +325,17 @@ for(vari in 1:7){
 plot_grid(graf[[1]], graf[[2]], graf[[3]], graf[[4]], graf[[5]], graf[[6]], graf[[7]], ncol = 4 )
 ```
 
+Observem com la distribució es concentra al voltant de la mitjana i en general es força simétrica donant sentit a la hipòtesi de normalitat.
 
+Veiem els valors de la mitjana, desviació típica, error estandar i intervals de confiança inferios y superiors de la mitjana de la taxa de variació per cada tipus de canya: 
 
+```{r echo=FALSE}
 
+kable(summ_B)
 
+```
+
+Es presenta el gráfic de barres la mitjana de la taxaa de variació del pes per cada tipus de canya amb linterval de confiança calculat:
 
 ```{r echo=FALSE, fig.width=8, fig.height=3, warning = FALSE}
 p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>% 
@@ -289,6 +356,7 @@ p_td_tv %>% filter(MEDI != "0_Aire", SETMANA>=0) %>%
 
 ```
 
+Observem com l'inteval de confiança del bambú, fusta, sucre i paper no conté el valor 0 cosa que es indica que la variació en aquets casos ha estat significativa a un nivell de confiança del 95%. Per tant podem rebutjar la hipotesi nul·la que les taxes de variació en aquests tipsu de canya es igual de 0.   
 
 
 ```{r }
